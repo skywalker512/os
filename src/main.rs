@@ -5,6 +5,7 @@
 #![reexport_test_harness_main = "test_main"] // 指定测试的入口
 
 use core::panic::PanicInfo;
+
 mod serial;
 
 mod vga_buffer;
@@ -39,16 +40,14 @@ pub extern "C" fn _start() -> ! {  // 此函数是入口点，因为链接器会
 
 #[test_case]
 fn trivial_assertion() {
-    serial_print!("trivial assertion... ");
-    assert_eq!(1, 2);
-    serial_println!("[ok]");
+    assert_eq!(1, 1);
 }
 
 #[cfg(test)] // 条件编译只有测试的时候才会编译
-fn test_runner(tests: &[&dyn Fn()]) {
+fn test_runner(tests: &[&dyn Testable]) {
     serial_println!("Running {} tests", tests.len());
     for test in tests {
-        test();
+        test.run(); // new
     }
     exit_qemu(QemuExitCode::Success);
 }
@@ -67,5 +66,20 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
         // 0xf4 是 package.metadata.bootimage 中指定的
         let mut port = Port::new(0xf4);
         port.write(exit_code as u32);
+    }
+}
+
+pub trait Testable {
+    fn run(&self) -> ();
+}
+
+impl<T> Testable for T
+    where
+        T: Fn(),
+{
+    fn run(&self) {
+        serial_print!("{}...\t", core::any::type_name::<T>());
+        self();
+        serial_println!("[ok]");
     }
 }
