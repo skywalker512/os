@@ -1,5 +1,7 @@
 use volatile::Volatile;
 use core::fmt;
+use lazy_static::lazy_static;
+use spin::Mutex;
 
 // ----- 颜色结构定义 -----
 
@@ -123,21 +125,30 @@ impl Writer {
     }
 }
 
-// 测试代码
-pub fn print_something() {
-    use core::fmt::Write;
-    let mut writer = Writer {
+// 第一次访问的时候创建
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
         color_code: ColorCode::new(Color::Yellow, Color::Black),
-        // 0xb8000 是 VGA 的固定规定的地址 https://en.wikipedia.org/wiki/Memory-mapped_I/O
         buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
-    };
+    });
+}
 
-    writer.write_byte(b'H');
-    writer.write_string("ello ");
-    // ö 不是 ASCII 码
-    writer.write_string("Wörld!\n");
-    write!(writer, "The numbers are {} and {}", 42, 1.0/3.0).unwrap();
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)] // 不在文档中出现
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
 }
 
 impl fmt::Write for Writer {
