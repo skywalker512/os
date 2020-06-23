@@ -10,9 +10,20 @@ mod serial;
 mod vga_buffer;
 
 /// 这个方法会 panic 的时候会调用
+#[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
+    loop {}
+}
+
+// 测试时的 panic
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    serial_println!("[failed]\n");
+    serial_println!("Error: {}\n", info);
+    exit_qemu(QemuExitCode::Failed);
     loop {}
 }
 
@@ -29,7 +40,7 @@ pub extern "C" fn _start() -> ! {  // 此函数是入口点，因为链接器会
 #[test_case]
 fn trivial_assertion() {
     serial_print!("trivial assertion... ");
-    assert_eq!(1, 1);
+    assert_eq!(1, 2);
     serial_println!("[ok]");
 }
 
