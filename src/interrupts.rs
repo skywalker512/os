@@ -1,10 +1,11 @@
-use crate::{gdt, println, print};
-
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
-// 中断类型
-use lazy_static::lazy_static;
 use pic8259_simple::ChainedPics;
 use spin;
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+
+// 中断类型
+use lazy_static::lazy_static;
+
+use crate::{gdt, print, println};
 
 // 前面的 32 个被 cpu 中断使用了
 // 第一级控制器
@@ -19,6 +20,7 @@ pub static PICS: spin::Mutex<ChainedPics> =
 #[repr(u8)] // 让 enum 使用 u8 排布
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
+    Keyboard, // 自动加一
 }
 
 impl InterruptIndex {
@@ -30,6 +32,7 @@ impl InterruptIndex {
         usize::from(self.as_u8())
     }
 }
+
 
 // x86-interrupt 它保证在函数返回时所有寄存器值都恢复到它们的原始值
 // 也就是中断想要达到的效果，然后我们不需要去关注这些细节
@@ -55,6 +58,39 @@ extern "x86-interrupt" fn timer_interrupt_handler(
     }
 }
 
+extern "x86-interrupt" fn keyboard_interrupt_handler(
+    _stack_frame: &mut InterruptStackFrame)
+{
+    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+    use spin::Mutex;
+    use x86_64::instructions::port::Port;
+
+    lazy_static! {
+        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
+            Mutex::new(Keyboard::new(layouts::Us104Key, ScancodeSet1,
+                HandleControl::Ignore)
+            );
+    }
+
+    let mut keyboard = KEYBOARD.lock();
+    let mut port = Port::new(0x60);
+
+    let scancode: u8 = unsafe { port.read() };
+    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
+        if let Some(key) = keyboard.process_keyevent(key_event) {
+            match key {
+                DecodedKey::Unicode(character) => print!("{}", character),
+                DecodedKey::RawKey(key) => print!("{:?}", key),
+            }
+        }
+    }
+
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    }
+}
+
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
@@ -66,6 +102,9 @@ lazy_static! {
         }
         idt[InterruptIndex::Timer.as_usize()]
             .set_handler_fn(timer_interrupt_handler); // timer 中断控制器
+
+         idt[InterruptIndex::Keyboard.as_usize()]
+            .set_handler_fn(keyboard_interrupt_handler); // 键盘中断控制器
         idt // 返回给 IDT
     };
 }
