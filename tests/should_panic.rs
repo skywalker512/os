@@ -14,12 +14,12 @@ pub extern "C" fn _start() -> ! {
 
 fn should_fail() {
     serial_print!("should_panic::should_fail...\t");
-    assert_eq!(0, 1);
+    assert_eq!(0, 1); // 出错了就会调用下面的 panic
 }
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     serial_println!("[ok]");
-    exit_qemu(QemuExitCode::Success);
+    exit_qemu(QemuExitCode::Success); // 以正常方式退出实现了 panic_handler
     loop {}
 }
