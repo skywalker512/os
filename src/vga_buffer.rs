@@ -178,10 +178,19 @@ fn test_println_many() {
 
 #[test_case]
 fn test_println_output() {
+    use core::fmt::Write;
+    use x86_64::instructions::interrupts;
+
     let s = "Some test string that fits on a single line";
-    println!("{}", s);
-    for (i, c) in s.chars().enumerate() {
-        let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
-        assert_eq!(char::from(screen_char.ascii_character), c);
-    }
+    // 这里有可能会出现中断来了在 buffer 中写一些东西，与预期不同，所以需要先禁用设备中断处理
+    interrupts::without_interrupts(|| {
+        // 将锁提前，保证整个过程不会干扰
+        let mut writer = WRITER.lock();
+        // 有可能在进入之前中断就已经写了一些东西了，所以先换一行
+        writeln!(writer, "\n{}", s).expect("writeln failed");
+        for (i, c) in s.chars().enumerate() {
+            let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
+            assert_eq!(char::from(screen_char.ascii_character), c);
+        }
+    });
 }
