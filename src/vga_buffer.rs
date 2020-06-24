@@ -148,7 +148,12 @@ macro_rules! println {
 #[doc(hidden)] // 不在文档中出现
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
-    WRITER.lock().write_fmt(args).unwrap();
+    use x86_64::instructions::interrupts;
+
+    // 这里面会去那锁，但是中断来了 中断处理函数也会去拿锁但是还没释放就死锁了
+    interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 impl fmt::Write for Writer {

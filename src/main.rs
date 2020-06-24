@@ -41,7 +41,10 @@ pub extern "C" fn _start() -> ! {  // 此函数是入口点，因为链接器会
 
     // 我们捕捉到了 断点，没有崩溃
     println!("It did not crash!");
-    loop {}
+    loop {
+        use blog_os::print;
+        print!("-");
+    }
 }
 
 #[test_case]
