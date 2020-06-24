@@ -50,6 +50,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
 #[cfg(test)]
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
+    init();
     // 不加上条件编译是能让 tests 中也能用
     test_main();
     loop {}
