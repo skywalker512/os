@@ -27,13 +27,14 @@ fn panic(info: &PanicInfo) -> ! {
 pub extern "C" fn _start() -> ! {  // 此函数是入口点，因为链接器会查找函数
     blog_os::init(); // new
 
-    // 调用断点异常
-    // x86_64::instructions::interrupts::int3(); // int3 是断点指令
-
-    // page fault
-    unsafe {
-        *(0xdeadbeef as *mut u64) = 42;
-    };
+    // 为什么会出现三次错误？
+    // 1. 递归调用栈溢出，会指向 guard page (page fault)
+    // 2. 触发 page fault，cpu 想要将 interrupt stack frame 推入 stack 中
+    // 3. 又出现栈溢出 page fault，reboot
+    fn stack_overflow() {
+        stack_overflow(); // 递归调用
+    }
+    stack_overflow();
 
     #[cfg(test)]
         test_main();
