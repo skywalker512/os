@@ -28,7 +28,12 @@ pub extern "C" fn _start() -> ! {  // 此函数是入口点，因为链接器会
     blog_os::init(); // new
 
     // 调用断点异常
-    x86_64::instructions::interrupts::int3(); // int3 是断点指令
+    // x86_64::instructions::interrupts::int3(); // int3 是断点指令
+
+    // page fault
+    unsafe {
+        *(0xdeadbeef as *mut u64) = 42;
+    };
 
     #[cfg(test)]
         test_main();
