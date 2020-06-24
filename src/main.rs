@@ -31,10 +31,10 @@ pub extern "C" fn _start() -> ! {  // 此函数是入口点，因为链接器会
     // 1. 递归调用栈溢出，会指向 guard page (page fault)
     // 2. 触发 page fault，cpu 想要将 interrupt stack frame 推入 stack 中
     // 3. 又出现栈溢出 page fault，reboot
-    fn stack_overflow() {
-        stack_overflow(); // 递归调用
-    }
-    stack_overflow();
+    // fn stack_overflow() {
+    //     stack_overflow(); // 递归调用
+    // }
+    // stack_overflow();
 
     #[cfg(test)]
         test_main();
