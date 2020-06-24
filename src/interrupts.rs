@@ -1,0 +1,23 @@
+use crate::println;
+
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame}; // 中断类型
+use lazy_static::lazy_static;
+
+// x86-interrupt 它保证在函数返回时所有寄存器值都恢复到它们的原始值
+// 也就是中断想要达到的效果，然后我们不需要去关注这些细节
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame)
+{
+    println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+}
+
+lazy_static! {
+    static ref IDT: InterruptDescriptorTable = {
+        let mut idt = InterruptDescriptorTable::new();
+        idt.breakpoint.set_handler_fn(breakpoint_handler); // 设定 断点处理函数
+        idt // 返回给 IDT
+    };
+}
+
+pub fn init_idt() {
+    IDT.load();
+}

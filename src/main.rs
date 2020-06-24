@@ -25,8 +25,16 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[no_mangle] // no_mangle 不会对 _start 进行修改
 pub extern "C" fn _start() -> ! {  // 此函数是入口点，因为链接器会查找函数
+    blog_os::init(); // new
+
+    // 调用断点异常
+    x86_64::instructions::interrupts::int3(); // int3 是断点指令
+
     #[cfg(test)]
         test_main();
+
+    // 我们捕捉到了 断点，没有崩溃
+    println!("It did not crash!");
     loop {}
 }
 
