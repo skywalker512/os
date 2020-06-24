@@ -16,6 +16,10 @@ use core::panic::PanicInfo;
 pub fn init() {
     gdt::init();
     interrupts::init_idt();
+    // 初始化外部设备中断控制器
+    unsafe { interrupts::PICS.lock().initialize() };
+    // 让 cpu 处理 外部设备中断
+    x86_64::instructions::interrupts::enable();
 }
 
 pub trait Testable {
