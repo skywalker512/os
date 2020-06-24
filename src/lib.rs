@@ -13,6 +13,13 @@ pub mod gdt;
 
 use core::panic::PanicInfo;
 
+/// cpu 暂停指令
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
+
 pub fn init() {
     gdt::init();
     interrupts::init_idt();
@@ -49,7 +56,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
-    loop {}
+    hlt_loop();
 }
 
 /// `cargo xtest` 的入口
@@ -59,7 +66,7 @@ pub extern "C" fn _start() -> ! {
     init();
     // 不加上条件编译是能让 tests 中也能用
     test_main();
-    loop {}
+    hlt_loop();
 }
 
 #[cfg(test)]
